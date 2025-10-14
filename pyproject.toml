@@ -1,0 +1,18 @@
+[project]
+name = "strix"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14.0"
+dependencies = [
+    "aiohttp>=3.13.0",
+    "click>=8.3.0",
+    "dotenv>=0.9.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "ruff>=0.14.0",
+]
