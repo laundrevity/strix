@@ -18,6 +18,8 @@ from tools.kit import gather_tools
 
 load_dotenv()
 _ENDPOINT = os.getenv("LLM_API_ENDPOINT")
+_MODEL = os.getenv("LLM_API_MODEL")
+_HEADERS = {"Authorization": f"Bearer {os.getenv('ZAI_API_KEY')}"}
 _THINKING = "🧠"
 _CONTENT = "🤖"
 _TOOL_CALLS = "🛠️"
@@ -57,7 +59,13 @@ class Agent:
 
     @property
     def payload(self):
-        return {"messages": self.messages, "stream": True, "tools": self.tools_schema}
+        return {
+            "messages": self.messages,
+            "stream": True,
+            "tools": self.tools_schema,
+            "tool_stream": True,
+            "model": _MODEL,
+        }
 
     async def __aenter__(self):
         self.reader = asyncio.StreamReader()
@@ -105,6 +113,7 @@ class Agent:
                         }
                     )
                 response, n_tokens = await self.get_response()
+                self.messages.append(response)
 
             prompt = await self.read(prefix=f"[{n_tokens}] > ")
             self.messages.append({"role": "user", "content": prompt})
@@ -124,16 +133,18 @@ class Agent:
     async def get_response(self) -> tuple[dict[str, Any], int]:
         self.log.debug("send payload[%s]", json.dumps(self.payload, indent=4))
         async with ClientSession() as session:
-            async with session.post(_ENDPOINT, json=self.payload) as resp:
-                resp.raise_for_status()
-
+            async with session.post(
+                _ENDPOINT, headers=_HEADERS, json=self.payload
+            ) as resp:
                 started_reasoning = False
                 started_content = False
                 started_tool_calls = False
                 n_tokens = 0
-                message = {}
+                tool_call_index = -1
+                message = {"role": "assistant"}
 
                 async for chunk_bytes in resp.content:
+                    self.log.debug("rcvd chunk_bytes[%s]", chunk_bytes)
                     chunk = chunk_bytes.decode("utf-8").rstrip()
                     if chunk.startswith("data: "):
                         chunk = chunk[6:]
@@ -149,10 +160,6 @@ class Agent:
                         chunk_json = json.loads(chunk)
                         choice = chunk_json["choices"][0]
                         if delta := choice.get("delta"):
-                            if role := delta.get("role"):
-                                message["role"] = role
-                                continue
-
                             if reasoning_content := delta.get("reasoning_content"):
                                 if not started_reasoning:
                                     await self.write(f"{_THINKING} ")
@@ -162,7 +169,10 @@ class Agent:
                                     message["reasoning_content"] += reasoning_content
                                 await self.write(reasoning_content)
 
-                            elif content := delta.get("content"):
+                            elif (
+                                content := delta.get("content", "\n")
+                            ) != "\n" and content:
+                                self.log.debug("delta content[%s]", content)
                                 if not started_content:
                                     await self.write(f"\n\n{_CONTENT} ")
                                     started_content = True
@@ -177,7 +187,13 @@ class Agent:
                                 if not started_tool_calls:
                                     await self.write(f"\n\n{_TOOL_CALLS}  ")
                                     started_tool_calls = True
-                                    message["tool_calls"] = [
+                                    message["tool_calls"] = []
+                                if tc.get("id"):
+                                    tool_call_index += 1
+                                    if tool_call_index:
+                                        await self.write(") ")
+
+                                    message["tool_calls"].append(
                                         {
                                             "type": "function",
                                             "id": tc["id"],
@@ -186,22 +202,24 @@ class Agent:
                                                 "arguments": args_data,
                                             },
                                         }
-                                    ]
+                                    )
                                     await self.write(
                                         f"{tc['function']['name']}({args_data}"
                                     )
                                 else:
-                                    message["tool_calls"][0]["function"][
+                                    message["tool_calls"][tool_call_index]["function"][
                                         "arguments"
                                     ] += args_data
                                     await self.write(args_data)
 
-                        elif finish_reason := choice.get("finish_reason"):
+                        if finish_reason := choice.get("finish_reason"):
                             if finish_reason == "tool_calls":
                                 await self.write(")")
-                            timings = chunk_json["timings"]
-                            n_tokens = (
-                                timings["cache_n"]
-                                + timings["prompt_n"]
-                                + timings["predicted_n"]
-                            )
+                            if timings := chunk_json.get("timings"):
+                                n_tokens = (
+                                    timings["cache_n"]
+                                    + timings["prompt_n"]
+                                    + timings["predicted_n"]
+                                )
+                            elif usage := chunk_json.get("usage"):
+                                n_tokens = usage["total_tokens"]
