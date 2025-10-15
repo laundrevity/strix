@@ -19,8 +19,8 @@ async def execute_shell_command(command: str, timeout: int = 30):
 
         return {
             "returncode": process.returncode,
-            "stdout": stdout.decode("utf-8") if stdout else "",
-            "stderr": stderr.decode("utf-8") if stderr else "",
+            "stdout": stdout.decode("utf-8").strip() if stdout else "",
+            "stderr": stderr.decode("utf-8").strip() if stderr else "",
         }
     except TimeoutError:
         return {"stderr": f"Exceeded timeout[{timeout}s]"}
