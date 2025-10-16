@@ -55,7 +55,7 @@ class Agent:
         self.writer: asyncio.StreamWriter | None = None
         self._reader_transport: asyncio.ReadTransport | None = None
         self._writer_transport: asyncio.WriteTransport | None = None
-        self.tools_schema, self.tools = gather_tools()
+        self.tools_schema, self.tools = gather_tools(self)
 
     @property
     def payload(self):

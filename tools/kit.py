@@ -63,7 +63,7 @@ def tool(description, **arg_descriptions):
     return inner
 
 
-def gather_tools():
+def gather_tools(ref):
     schemas = []
     tools = {}
     current_file, current_dir = Path(__file__).name, Path(__file__).parent
@@ -84,5 +84,6 @@ def gather_tools():
             ) and hasattr(obj, "schema"):
                 schemas.append(obj.schema)
                 tools[name] = obj
+                setattr(obj, "ref", ref)
 
     return schemas, tools
