@@ -192,7 +192,7 @@ strix/
 
 Run tests with pytest:
 ```bash
-pytest
+uv run pytest -v
 ```
 
 Tests cover:
@@ -217,11 +217,3 @@ Logs are written to:
 - File in `logs/` directory (DEBUG level and above)
 
 Log files are timestamped: `logs/agent_YYYYMMDD_HHMMSS.log`
-
-## License
-
-[Add your license here]
-
-## Contributing
-
-[Add contribution guidelines here]
