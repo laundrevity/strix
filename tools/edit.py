@@ -50,7 +50,7 @@ def replace(
         if old_string == "":
             if file_exists:
                 return f"Error: Failed to edit. Attempted to create file[{file_path}] that already exists"
-            path_obj.parent.mkdir(parent=True, exist_ok=True)
+            path_obj.parent.mkdir(parents=True, exist_ok=True)
             path_obj.write_text(new_string, encoding="utf-8")
             return f"Created new file[{file_path}] with provided content"
 
