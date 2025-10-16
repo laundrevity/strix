@@ -27,7 +27,7 @@ Strix is an AI-powered agent framework that enables conversational interaction w
 1. Clone or download the project
 2. Install dependencies:
    ```bash
-   pip install -e .
+   uv sync --group dev
    ```
 
 3. Set up environment variables:
