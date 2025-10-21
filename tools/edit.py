@@ -1,4 +1,6 @@
 from pathlib import Path
+import logging
+from typing import Optional
 
 from tools.kit import tool
 
@@ -30,7 +32,15 @@ _PARAM_DOCS = dict(
 def replace(
     file_path: str, old_string: str, new_string: str, expected_replacements: int = 1
 ) -> str:
+    """
+    Edit a file by replacing text content.
+    
+    Returns success message or detailed error message.
+    """
     try:
+        logger = replace.ref.log
+        logger.debug(f"Attempting to edit file: {file_path}")
+        
         root_dir = _ROOT_DIR
         path_obj = Path(file_path)
 
@@ -51,14 +61,22 @@ def replace(
             if file_exists:
                 return f"Error: Failed to edit. Attempted to create file[{file_path}] that already exists"
             path_obj.parent.mkdir(parents=True, exist_ok=True)
-            path_obj.write_text(new_string, encoding="utf-8")
-            return f"Created new file[{file_path}] with provided content"
+            try:
+                path_obj.write_text(new_string, encoding="utf-8")
+                logger.debug(f"Successfully created new file: {file_path}")
+                return f"Created new file[{file_path}] with provided content"
+            except Exception as e:
+                return f"Error: Failed to create file[{file_path}]: {str(e)}"
 
-        # exit existing file
+        # modify existing file
         if not file_exists:
             return f"Error: file[{file_path}] not found. Cannot apply edit. Use an empty old_string to create a new file."
 
-        current_content = path_obj.read_text(encoding="utf-8").replace("\r\n", "\n")
+        try:
+            current_content = path_obj.read_text(encoding="utf-8").replace("\r\n", "\n")
+        except Exception as e:
+            return f"Error: Failed to read file[{file_path}]: {str(e)}"
+
         occurrences = current_content.count(old_string)
         if occurrences == 0:
             return (
@@ -72,9 +90,14 @@ def replace(
                 f"but found {occurrences}."
             )
 
-        new_content = current_content.replace(old_string, new_string)
-        path_obj.write_text(new_content, encoding="utf-8")
-        return f"Successfully modified file: {file_path} ({occurrences} replacements)."
+        try:
+            new_content = current_content.replace(old_string, new_string)
+            path_obj.write_text(new_content, encoding="utf-8")
+            logger.debug(f"Successfully modified file: {file_path} ({occurrences} replacements)")
+            return f"Successfully modified file: {file_path} ({occurrences} replacements)."
+        except Exception as e:
+            return f"Error: Failed to write to file[{file_path}]: {str(e)}"
 
     except Exception as exc:
+        logger.error(f"Unexpected error in replace tool: {exc}")
         return f"Error executing edit: {exc}"

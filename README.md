@@ -12,7 +12,9 @@ Strix is an AI-powered agent framework that enables conversational interaction w
   - Shell command execution
   - File creation and editing
   - Cryptocurrency price tracking
+  - Git repository operations
 - **Streaming Support**: Real-time response streaming with reasoning content
+- **Enhanced Error Handling**: Robust error handling and user feedback
 - **Logging**: Comprehensive logging with timestamps and structured output
 
 ## Installation
@@ -217,3 +219,27 @@ Logs are written to:
 - File in `logs/` directory (DEBUG level and above)
 
 Log files are timestamped: `logs/agent_YYYYMMDD_HHMMSS.log`
+
+## Example Usage
+
+Here are some practical examples of how to use the Strix agent:
+
+1. **Get cryptocurrency prices**:
+   ```bash
+   uv run main.py "What's the current price of Bitcoin?" --snap
+   ```
+
+2. **Search the web for information**:
+   ```bash
+   uv run main.py "Explain how asyncio works in Python" --snap
+   ```
+
+3. **Execute shell commands**:
+   ```bash
+   uv run main.py "List all Python files in this directory" --snap
+   ```
+
+4. **Create or modify files**:
+   ```bash
+   uv run main.py "Create a simple Python script that prints 'Hello, World!'" --snap
+   ```

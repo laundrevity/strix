@@ -94,6 +94,8 @@ class Agent:
         while True:
             response, n_tokens = await self.get_response()
             self.messages.append(response)
+            
+            # Handle tool calls
             while tool_calls := response.get("tool_calls"):
                 # Create coroutines for all tool calls to execute them concurrently
                 tool_coroutines = []
@@ -113,30 +115,41 @@ class Agent:
                                 tool_func.__name__,
                                 tool_kwargs,
                             )
-                            result = tool_func(**tool_kwargs)
-                            if isawaitable(result):
-                                result = await result
-                            return result
+                            try:
+                                result = tool_func(**tool_kwargs)
+                                if isawaitable(result):
+                                    result = await result
+                                return result
+                            except Exception as e:
+                                self.log.error(f"Error executing tool {tool_func.__name__}: {e}")
+                                return f"Error executing tool {tool_func.__name__}: {str(e)}"
 
                         tool_coroutines.append(execute_tool(fn, kwargs))
                     else:
                         # For missing tools, create a coroutine that returns error message
                         async def missing_tool():
-                            return f"{fn_name} not in tools[{list(self.tools.keys())}]"
+                            return f"Error: Tool '{fn_name}' not found. Available tools: {list(self.tools.keys())}"
 
                         tool_coroutines.append(missing_tool())
 
                 # Execute all tool calls concurrently
-                tool_results = await asyncio.gather(*tool_coroutines)
+                tool_results = await asyncio.gather(*tool_coroutines, return_exceptions=True)
 
                 # Add all tool results to messages
                 for (tc, fn_name), res in zip(tool_call_data, tool_results):
+                    # Handle exceptions from tool execution
+                    if isinstance(res, Exception):
+                        result_content = f"Error executing tool '{fn_name}': {str(res)}"
+                        self.log.error(f"Tool execution error for {fn_name}: {res}")
+                    else:
+                        result_content = str(res)
+                    
                     self.messages.append(
                         {
                             "role": "tool",
                             "tool_call_id": tc["id"],
                             "name": fn_name,
-                            "content": str(res),
+                            "content": result_content,
                         }
                     )
 
