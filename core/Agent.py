@@ -27,10 +27,19 @@ _TOOL_CALLS = "🛠️"
 
 class Agent:
     def __init__(self, prompt: str, snap: bool):
+        self.messages = []
+        
+        # Load system prompt from file if it exists
+        system_prompt_path = Path("system_prompt.txt")
+        if system_prompt_path.exists():
+            with open(system_prompt_path, "r") as f:
+                system_prompt = f.read().strip()
+            self.messages.append({"role": "system", "content": system_prompt})
+        
+        # Add project snapshot if requested
         if snap:
-            self.messages = [{"role": "system", "content": get_snapshot()}]
-        else:
-            self.messages = []
+            self.messages.append({"role": "system", "content": get_snapshot()})
+            
         self.messages.append({"role": "user", "content": prompt})
         self.log = get_logger(__name__)
 
